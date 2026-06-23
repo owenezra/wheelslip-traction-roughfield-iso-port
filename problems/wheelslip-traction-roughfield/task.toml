@@ -1,0 +1,33 @@
+schema_version = "1.1"
+
+[task]
+name = "labelbox/wheelslip-traction-roughfield"
+description = "Infer wheel-ground traction from a rough-field probe and program a blind uphill stop."
+
+[environment]
+required_resources = "13vcpu+32gib+tpuv5e1x1"
+storage_mb = 10000
+allow_internet = false
+
+[agent]
+timeout_sec = 21600
+
+[verifier]
+timeout_sec = 10800
+env = []
+
+[ground_truth]
+continuous_score_epsilon = 0.05
+max_trivial_score = 0.10
+
+[difficulty]
+task_type = "ml"
+domain = "robot_dynamics_system_identification"
+reward_type = "continuous_scoring_function"
+license = "self_generated"
+license_source = "All observations and evaluation trajectories are generated deterministically at runtime by this task's self-authored MuJoCo simulator; no external dataset is used."
+
+[[outputs]]
+path = "/tmp/output/policy.py"
+required = true
+description = "Self-contained Python module defining load_policy() and act(observation) for a 14-knot blind torque program."

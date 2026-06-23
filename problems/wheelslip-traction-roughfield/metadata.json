@@ -1,0 +1,7 @@
+{
+  "benchmark": "taiga_task",
+  "problem_data": {
+    "instance_id": "wheelslip-traction-roughfield",
+    "description": "Infer rough-field traction from a short rover probe and submit a blind uphill stopping policy."
+  }
+}
