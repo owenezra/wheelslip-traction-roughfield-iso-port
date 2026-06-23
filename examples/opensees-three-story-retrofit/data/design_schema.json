@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenSeesThreeStoryRetrofitDesign",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["devices"],
+  "properties": {
+    "devices": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 6,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["story", "bay", "type", "coefficient"],
+            "properties": {
+              "story": {"type": "integer", "enum": [1, 2, 3]},
+              "bay": {"type": "integer", "enum": [1, 2]},
+              "type": {"const": "viscous_damper"},
+              "coefficient": {"type": "number", "minimum": 10.0, "maximum": 90.0}
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["story", "bay", "type", "area"],
+            "properties": {
+              "story": {"type": "integer", "enum": [1, 2, 3]},
+              "bay": {"type": "integer", "enum": [1, 2]},
+              "type": {"const": "steel_brace"},
+              "area": {"type": "number", "minimum": 0.5, "maximum": 4.0}
+            }
+          }
+        ]
+      }
+    }
+  }
+}

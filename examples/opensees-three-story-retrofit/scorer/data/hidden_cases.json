@@ -1,0 +1,54 @@
+{
+  "budget": 100.0,
+  "max_devices": 6,
+  "viscous_damper": {
+    "coefficient_min": 10.0,
+    "coefficient_max": 90.0,
+    "cost_fixed": 4.0,
+    "cost_per_coefficient": 0.55,
+    "equivalent_stiffness_factor": 240.0
+  },
+  "steel_brace": {
+    "area_min": 0.5,
+    "area_max": 4.0,
+    "cost_fixed": 6.0,
+    "cost_per_area": 8.0,
+    "elastic_modulus": 29000.0
+  },
+  "weights": {
+    "drift_reduction_progress": 0.40,
+    "roof_displacement_progress": 0.30,
+    "base_shear_stability_progress": 0.20,
+    "cost_efficiency_progress": 0.05,
+    "analysis_success_progress": 0.05
+  },
+  "oracle_design": {
+    "devices": [
+      {"story": 1, "bay": 1, "type": "steel_brace", "area": 2.3},
+      {"story": 1, "bay": 2, "type": "steel_brace", "area": 2.1},
+      {"story": 2, "bay": 1, "type": "viscous_damper", "coefficient": 34.0},
+      {"story": 2, "bay": 2, "type": "steel_brace", "area": 1.3},
+      {"story": 3, "bay": 1, "type": "viscous_damper", "coefficient": 17.0}
+    ]
+  },
+  "cases": [
+    {
+      "name": "nominal_pushover",
+      "gravity_scale": 1.0,
+      "service_lateral_scale": 1.0,
+      "pushover_lateral_scale": 1.0,
+      "service_steps": 10,
+      "pushover_steps": 42,
+      "pushover_disp_increment": 0.08
+    },
+    {
+      "name": "high_gravity_high_lateral",
+      "gravity_scale": 1.08,
+      "service_lateral_scale": 1.15,
+      "pushover_lateral_scale": 1.10,
+      "service_steps": 12,
+      "pushover_steps": 38,
+      "pushover_disp_increment": 0.09
+    }
+  ]
+}

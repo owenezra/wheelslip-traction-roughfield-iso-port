@@ -1,0 +1,813 @@
+{
+  "alignerr_cli_version": "0.1.0",
+  "base_image_ref": "lbx-tasks-base:runtime-ml-core-py313-local",
+  "built_at": "2026-06-17T10:54:48.643788+00:00",
+  "duration_seconds": 5.554176500067115,
+  "harness_result": {
+    "auto_qa": {
+      "blocking_issues": [
+        "Reward-hacking backdoor: `_is_calibrated_control` in scorer/compute_score.py returns True for plate_gap==0.5 and plate_length==2.0; when combined with feasibility + OpenFOAM evidence it sets per_re[*] = {ok:True, rms_cl:0.0, suppression:1.0, mean_cd:min(1.0,cd_cap)} for EVERY hidden Reynolds case without ever calling ofc.build_and_run. These are the literal example values in instruction.md, so copying the prompt example wins ~1.0 with no real solving.",
+        "Reference solution invalidity: solution/solve.sh writes exactly {plate_gap:0.5, plate_length:2.0}, i.e. the backdoor values, so the oracle's perfect score is produced by the short-circuit rather than a real OpenFOAM solve. The task's basic solvability-via-physics proof is therefore unverified.",
+        "Prompt/scorer contradiction: instruction.md states 'a plate tuned to a single condition will not score well,' yet the scorer awards a perfect worst-case suppression to a single fixed parameter pair via the calibrated-control branch."
+      ],
+      "checked_at": "2026-06-17T11:12:53.036866+00:00",
+      "checks": [
+        {
+          "check": "Prompt clarity",
+          "reason": "instruction.md is clear on deliverable, units, constraints, and the required diagnostic, but it both prints the oracle answer (0.5, 2.0) as the schema example and asserts 'a plate tuned to a single condition will not score well' \u2014 which the scorer's calibrated-control branch contradicts.",
+          "recommendation": "Use neutral non-oracle values in the example schema and ensure the prompt's robustness claim matches the actual scoring once the backdoor is removed.",
+          "status": "warning"
+        },
+        {
+          "check": "Output contract",
+          "reason": "task.toml [[outputs]] declares /tmp/output/control.json required; instruction.md and solve.sh write exactly that path; 'Write nothing else to /tmp/output' is stated.",
+          "recommendation": "",
+          "status": "pass"
+        },
+        {
+          "check": "MuJoCo physics validity",
+          "reason": "CFD setup (laminar pimpleFoam, fixed blockMesh, zero-thickness baffle, RMS(Cl) over fixed window, baseline RMS values 0.25/0.34/0.18 plausible for Re=80-130) is physically reasonable, but the core scorer module openfoam_case.py is not provided and the oracle never exercises the real solve due to the backdoor, so physics cannot be fully verified.",
+          "recommendation": "Include openfoam_case.py for review and ensure the oracle is scored through the real solver path.",
+          "status": "warning"
+        },
+        {
+          "check": "Reference solution",
+          "reason": "solve.sh emits the exact {0.5, 2.0} values that trigger `_is_calibrated_control`, so the oracle scores 1.0 via the short-circuit, not via a verified OpenFOAM run. There is no proof the real physics oracle actually suppresses the wake to RMS(Cl)<0.05 across the sweep.",
+          "recommendation": "Delete the calibrated-control branch and re-validate that solve.sh scores ~1.0 through actual solver execution; commit precomputed anchors consistent with that run.",
+          "status": "fail"
+        },
+        {
+          "check": "Baseline and difficulty calibration",
+          "reason": "The naive baseline (no plate) correctly maps to ~0, but the submitted attempt scored 0.63 while failing both robustness criteria, exceeding GRADING.md's 0.50 redesign threshold and indicating the structural/main-case criteria leave too little headroom.",
+          "recommendation": "Reduce weight on easy structural/health criteria or raise suppression thresholds so meaningful difficulty is preserved; re-measure oracle and baseline after removing the backdoor.",
+          "status": "warning"
+        },
+        {
+          "check": "Scorer determinism",
+          "reason": "Scoring is code-based with no LLM judge and fixed mesh/dt/window, so it is nominally deterministic; however the build-proof per_reynolds suppression values (0.9/0.3/0.9) are inconsistent with the rms_cl/baseline ratios the code would compute, suggesting a stubbed or divergent solver implementation that should be reconciled.",
+          "recommendation": "Reconcile openfoam_case.py outputs with the suppression formula in compute_score.py and re-run the proof to confirm consistent values.",
+          "status": "warning"
+        },
+        {
+          "check": "Rubric coverage",
+          "reason": "12 deterministic criteria span structural, mesh/solver health, objective suppression (0.25+0.25), drag caps, and no-amplification \u2014 good coverage, but mesh_baffle_ok and solver_converged_main are computed identically and all_cases_converged overlaps the main case, inflating count without distinct signal.",
+          "recommendation": "Merge or differentiate the duplicated mesh/convergence criteria and reallocate weight.",
+          "status": "warning"
+        },
+        {
+          "check": "Reward-hacking resistance",
+          "reason": "The `_is_calibrated_control` branch grants full suppression/convergence/drag passes for the literal prompt example values (0.5, 2.0) without running the solver, enabling a trivial near-perfect score by copying the example \u2014 a hard-coded single-path backdoor explicitly flagged 'fail' in the submitted rubric-quality review.",
+          "recommendation": "Remove the calibrated-control short-circuit entirely so all submissions, including the example values, are scored through the real solver.",
+          "status": "fail"
+        },
+        {
+          "check": "Hidden data and fixtures",
+          "reason": "scorer/data/expected.json (baseline_rms_cl per Re, cd_cap, suppression_floor/perfect, residual target) and hidden_conditions.json (reynolds sweep, dt, end_time, window, timeout) are private and referenced as ground-truth anchors, not leaked in /data.",
+          "recommendation": "",
+          "status": "pass"
+        },
+        {
+          "check": "Harness proof consistency",
+          "reason": "The build proof shows headline 0.63 for {0.0,4.0}, but the per_reynolds suppression figures do not match the scorer's ratio formula given the listed rms_cl/baseline values, and the 5.5s build duration is implausibly short for 3 sequential CFD solves, suggesting the recorded run used a stub rather than the real solver.",
+          "recommendation": "Re-run the harness with the actual solver and confirm metadata internally consistent with compute_score.py.",
+          "status": "warning"
+        },
+        {
+          "check": "Solver usage contract",
+          "reason": "instruction.md requires running /data/openfoam_probe.py plus `source /etc/solver-envs.d/openfoam.sh && blockMesh && checkMesh` before finalizing, and the scorer enforces transcript evidence with a -1.0 penalty for missing OpenFOAM evidence.",
+          "recommendation": "",
+          "status": "pass"
+        },
+        {
+          "check": "Public solver evidence path",
+          "reason": "A public runnable probe generator (data/openfoam_probe.py) builds a valid blockMesh/checkMesh case tied to submitted control values, and _has_openfoam_evidence checks for openfoam.sh, blockMesh, checkMesh, and mesh-OK markers in the transcript.",
+          "recommendation": "",
+          "status": "pass"
+        }
+      ],
+      "confidence": "high",
+      "is_solvable": {
+        "evidence": "The output contract (/tmp/output/control.json with plate_gap, plate_length) is clear, public probe at /data/openfoam_probe.py exists, and solve.sh produces a parseable submission; the design space is tractable.",
+        "value": true
+      },
+      "model": "claude-opus-4-8",
+      "non_blocking_feedback": [
+        "Difficulty calibration: the submitted model attempt {gap:0.0, length:4.0} scored 0.63 despite worst_case_suppression=0.0 and residual_shedding_low=0.0 \u2014 above the 0.50 redesign threshold in GRADING.md, indicating too much weight on easy structural/main-case criteria.",
+        "Redundant criteria: `mesh_baffle_ok` and `solver_converged_main` both return `bool(main) and main.get('ok')`, providing duplicate signal; `all_cases_converged` overlaps with `solver_converged_main` for the main case.",
+        "openfoam_case.py (the actual case builder/runner/analyzer) is referenced by the scorer and renderer but is not present in the package, so the real solver physics and force extraction cannot be independently reviewed."
+      ],
+      "overall_assessment": "fail",
+      "reasoning_effort": "xhigh",
+      "scientifically_correct": {
+        "evidence": "The oracle's 1.0 is achieved through the `_is_calibrated_control` short-circuit that assigns rms_cl=0.0/suppression=1.0 without running pimpleFoam, so the claimed physics result (README: 'Oracle plate gap=0.5,length=2.0: RMS(Cl)~0') is never actually validated by the solver path. Additionally the build-proof per_reynolds suppression values (0.9, 0.3, 0.9) do not match what compute_score.py would derive from the listed rms_cl/baseline (1-0.001/0.25259\u22480.996, etc.), indicating an inconsistent or stubbed solver.",
+        "value": false
+      },
+      "status": "completed",
+      "summary": "The task is a well-structured OpenFOAM vortex-suppression CFD problem with a correct /tmp/output contract, a required public solver diagnostic, and a deterministic rubric. However, `scorer/compute_score.py` contains a hard-coded backdoor (`_is_calibrated_control`) that short-circuits the entire solver and awards perfect suppression/drag/convergence to any submission equal to plate_gap=0.5, plate_length=2.0 \u2014 the exact values printed in the prompt's example JSON and produced verbatim by the oracle. This is a critical reward-hacking vulnerability that also means the oracle never proves real physics solvability, directly contradicts the prompt's own statement that a single-condition tune 'will not score well,' and teaches copying the example. This must be removed before the task is usable."
+    },
+    "details_path": "/Users/gandharvmahajan/Documents/AlignerrProjects/Anthropic/NumericalSolverRLTask/lbx-rl-tasks-iso-template/.harness-runs/openfoam-vortex-suppression-problem-dir-1781693681/verifier/reward-details.json",
+    "graded_at": "2026-06-17T11:06:59.519725+00:00",
+    "metadata": {
+      "control": {
+        "plate_gap": 0.0,
+        "plate_length": 4.0
+      },
+      "headline_score": 0.6307692307692309,
+      "openfoam_evidence": {
+        "block_mesh": true,
+        "check_mesh": true,
+        "mesh_output": true,
+        "openfoam_environment": true
+      },
+      "per_reynolds": {
+        "100": {
+          "baseline_rms_cl": 0.25259,
+          "mean_cd": 1.0,
+          "ok": true,
+          "reason": "",
+          "rms_cl": 0.001,
+          "suppression": 0.9
+        },
+        "130": {
+          "baseline_rms_cl": 0.33774,
+          "mean_cd": 1.0,
+          "ok": true,
+          "reason": "",
+          "rms_cl": 0.2,
+          "suppression": 0.3
+        },
+        "80": {
+          "baseline_rms_cl": 0.18098,
+          "mean_cd": 1.0,
+          "ok": true,
+          "reason": "",
+          "rms_cl": 0.001,
+          "suppression": 0.9
+        }
+      },
+      "pre_grade_cleanup": {
+        "killed_processes": 0,
+        "removed_nonregular": 0,
+        "removed_symlinks": 0
+      },
+      "reported_final_score": 0.6307692307692309,
+      "return_shape": "rubric_grade",
+      "rubric_breakdown": [
+        {
+          "actual": "True",
+          "criterion": "control_parses",
+          "criterion_id": "control_parses",
+          "description": "control.json is valid JSON with numeric plate params",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "control_parses",
+          "label": "control.json is valid JSON with numeric plate params",
+          "passed": true,
+          "reasoning": "control.json is valid JSON with numeric plate params",
+          "score": 1.0,
+          "weight": 0.03
+        },
+        {
+          "actual": "True",
+          "criterion": "feasibility_shell",
+          "criterion_id": "feasibility_shell",
+          "description": "plate params within physical bounds and inside the domain",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "feasibility_shell",
+          "label": "plate params within physical bounds and inside the domain",
+          "passed": true,
+          "reasoning": "plate params within physical bounds and inside the domain",
+          "score": 1.0,
+          "weight": 0.04
+        },
+        {
+          "actual": "True",
+          "criterion": "plate_present",
+          "criterion_id": "plate_present",
+          "description": "a wake splitter plate is actually specified (length > 0)",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "plate_present",
+          "label": "a wake splitter plate is actually specified (length > 0)",
+          "passed": true,
+          "reasoning": "a wake splitter plate is actually specified (length > 0)",
+          "score": 1.0,
+          "weight": 0.03
+        },
+        {
+          "actual": "True",
+          "criterion": "agent_openfoam_evidence",
+          "criterion_id": "agent_openfoam_evidence",
+          "description": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "agent_openfoam_evidence",
+          "label": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "passed": true,
+          "reasoning": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "score": 1.0,
+          "weight": 0.03
+        },
+        {
+          "actual": "True",
+          "criterion": "mesh_baffle_ok",
+          "criterion_id": "mesh_baffle_ok",
+          "description": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "mesh_baffle_ok",
+          "label": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "passed": true,
+          "reasoning": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "actual": "True",
+          "criterion": "solver_converged_main",
+          "criterion_id": "solver_converged_main",
+          "description": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "solver_converged_main",
+          "label": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "passed": true,
+          "reasoning": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "actual": "True",
+          "criterion": "drag_cap_main",
+          "criterion_id": "drag_cap_main",
+          "description": "mean drag at main Re stays under the cap (1.7)",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "drag_cap_main",
+          "label": "mean drag at main Re stays under the cap (1.7)",
+          "passed": true,
+          "reasoning": "mean drag at main Re stays under the cap (1.7)",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "actual": "0.9230769230769234",
+          "criterion": "suppression_main",
+          "criterion_id": "suppression_main",
+          "description": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "suppression_main",
+          "label": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "passed": true,
+          "reasoning": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "score": 0.9230769230769234,
+          "weight": 0.25
+        },
+        {
+          "actual": "False",
+          "criterion": "residual_shedding_low",
+          "criterion_id": "residual_shedding_low",
+          "description": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "residual_shedding_low",
+          "label": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "passed": false,
+          "reasoning": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "score": 0.0,
+          "weight": 0.1
+        },
+        {
+          "actual": "0.0",
+          "criterion": "worst_case_suppression",
+          "criterion_id": "worst_case_suppression",
+          "description": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "worst_case_suppression",
+          "label": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "passed": false,
+          "reasoning": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "score": 0.0,
+          "weight": 0.25
+        },
+        {
+          "actual": "True",
+          "criterion": "worst_case_drag_cap",
+          "criterion_id": "worst_case_drag_cap",
+          "description": "mean drag under the cap (1.7) for every Reynolds number",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "worst_case_drag_cap",
+          "label": "mean drag under the cap (1.7) for every Reynolds number",
+          "passed": true,
+          "reasoning": "mean drag under the cap (1.7) for every Reynolds number",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "actual": "True",
+          "criterion": "all_cases_converged",
+          "criterion_id": "all_cases_converged",
+          "description": "every hidden Reynolds case ran to completion with finite forces",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "all_cases_converged",
+          "label": "every hidden Reynolds case ran to completion with finite forces",
+          "passed": true,
+          "reasoning": "every hidden Reynolds case ran to completion with finite forces",
+          "score": 1.0,
+          "weight": 0.04
+        },
+        {
+          "actual": "True",
+          "criterion": "no_case_amplifies",
+          "criterion_id": "no_case_amplifies",
+          "description": "the plate never increases lift oscillation vs the baseline",
+          "expected": null,
+          "grading_type": "deterministic",
+          "id": "no_case_amplifies",
+          "label": "the plate never increases lift oscillation vs the baseline",
+          "passed": true,
+          "reasoning": "the plate never increases lift oscillation vs the baseline",
+          "score": 1.0,
+          "weight": 0.03
+        }
+      ],
+      "rubric_weights": {
+        "RMS(Cl) suppression vs the no-plate baseline at main Re": 0.25,
+        "a wake splitter plate is actually specified (length > 0)": 0.03,
+        "absolute RMS(Cl) below 0.05 for every Reynolds case": 0.1,
+        "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh": 0.03,
+        "control.json is valid JSON with numeric plate params": 0.03,
+        "every hidden Reynolds case ran to completion with finite forces": 0.04,
+        "mean drag at main Re stays under the cap (1.7)": 0.05,
+        "mean drag under the cap (1.7) for every Reynolds number": 0.05,
+        "mesh builds and the plate baffle is inserted on the wake centreline": 0.05,
+        "pimpleFoam completes with finite forces at the main Reynolds number": 0.05,
+        "plate params within physical bounds and inside the domain": 0.04,
+        "the plate never increases lift oscillation vs the baseline": 0.03,
+        "worst-case RMS(Cl) suppression across the hidden Reynolds sweep": 0.25
+      },
+      "score": 0.6307692307692309,
+      "scoring_mode": "weighted",
+      "serialized_grade": {
+        "penalties": null,
+        "score": 0.6307692307692309,
+        "scoring_mode": "weighted",
+        "structured_subscores": [
+          {
+            "criterion_id": "control_parses",
+            "description": "control.json is valid JSON with numeric plate params",
+            "grading_criteria": "control.json is valid JSON with numeric plate params",
+            "id": "control_parses",
+            "label": "control.json is valid JSON with numeric plate params",
+            "max_score": 1.0,
+            "name": "control.json is valid JSON with numeric plate params",
+            "reasoning": "control.json is valid JSON with numeric plate params",
+            "score": 1.0,
+            "weight": 0.03
+          },
+          {
+            "criterion_id": "feasibility_shell",
+            "description": "plate params within physical bounds and inside the domain",
+            "grading_criteria": "plate params within physical bounds and inside the domain",
+            "id": "feasibility_shell",
+            "label": "plate params within physical bounds and inside the domain",
+            "max_score": 1.0,
+            "name": "plate params within physical bounds and inside the domain",
+            "reasoning": "plate params within physical bounds and inside the domain",
+            "score": 1.0,
+            "weight": 0.04
+          },
+          {
+            "criterion_id": "plate_present",
+            "description": "a wake splitter plate is actually specified (length > 0)",
+            "grading_criteria": "a wake splitter plate is actually specified (length > 0)",
+            "id": "plate_present",
+            "label": "a wake splitter plate is actually specified (length > 0)",
+            "max_score": 1.0,
+            "name": "a wake splitter plate is actually specified (length > 0)",
+            "reasoning": "a wake splitter plate is actually specified (length > 0)",
+            "score": 1.0,
+            "weight": 0.03
+          },
+          {
+            "criterion_id": "agent_openfoam_evidence",
+            "description": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+            "grading_criteria": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+            "id": "agent_openfoam_evidence",
+            "label": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+            "max_score": 1.0,
+            "name": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+            "reasoning": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+            "score": 1.0,
+            "weight": 0.03
+          },
+          {
+            "criterion_id": "mesh_baffle_ok",
+            "description": "mesh builds and the plate baffle is inserted on the wake centreline",
+            "grading_criteria": "mesh builds and the plate baffle is inserted on the wake centreline",
+            "id": "mesh_baffle_ok",
+            "label": "mesh builds and the plate baffle is inserted on the wake centreline",
+            "max_score": 1.0,
+            "name": "mesh builds and the plate baffle is inserted on the wake centreline",
+            "reasoning": "mesh builds and the plate baffle is inserted on the wake centreline",
+            "score": 1.0,
+            "weight": 0.05
+          },
+          {
+            "criterion_id": "solver_converged_main",
+            "description": "pimpleFoam completes with finite forces at the main Reynolds number",
+            "grading_criteria": "pimpleFoam completes with finite forces at the main Reynolds number",
+            "id": "solver_converged_main",
+            "label": "pimpleFoam completes with finite forces at the main Reynolds number",
+            "max_score": 1.0,
+            "name": "pimpleFoam completes with finite forces at the main Reynolds number",
+            "reasoning": "pimpleFoam completes with finite forces at the main Reynolds number",
+            "score": 1.0,
+            "weight": 0.05
+          },
+          {
+            "criterion_id": "drag_cap_main",
+            "description": "mean drag at main Re stays under the cap (1.7)",
+            "grading_criteria": "mean drag at main Re stays under the cap (1.7)",
+            "id": "drag_cap_main",
+            "label": "mean drag at main Re stays under the cap (1.7)",
+            "max_score": 1.0,
+            "name": "mean drag at main Re stays under the cap (1.7)",
+            "reasoning": "mean drag at main Re stays under the cap (1.7)",
+            "score": 1.0,
+            "weight": 0.05
+          },
+          {
+            "criterion_id": "suppression_main",
+            "description": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+            "grading_criteria": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+            "id": "suppression_main",
+            "label": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+            "max_score": 1.0,
+            "name": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+            "reasoning": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+            "score": 0.9230769230769234,
+            "weight": 0.25
+          },
+          {
+            "criterion_id": "residual_shedding_low",
+            "description": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+            "grading_criteria": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+            "id": "residual_shedding_low",
+            "label": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+            "max_score": 1.0,
+            "name": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+            "reasoning": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+            "score": 0.0,
+            "weight": 0.1
+          },
+          {
+            "criterion_id": "worst_case_suppression",
+            "description": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+            "grading_criteria": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+            "id": "worst_case_suppression",
+            "label": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+            "max_score": 1.0,
+            "name": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+            "reasoning": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+            "score": 0.0,
+            "weight": 0.25
+          },
+          {
+            "criterion_id": "worst_case_drag_cap",
+            "description": "mean drag under the cap (1.7) for every Reynolds number",
+            "grading_criteria": "mean drag under the cap (1.7) for every Reynolds number",
+            "id": "worst_case_drag_cap",
+            "label": "mean drag under the cap (1.7) for every Reynolds number",
+            "max_score": 1.0,
+            "name": "mean drag under the cap (1.7) for every Reynolds number",
+            "reasoning": "mean drag under the cap (1.7) for every Reynolds number",
+            "score": 1.0,
+            "weight": 0.05
+          },
+          {
+            "criterion_id": "all_cases_converged",
+            "description": "every hidden Reynolds case ran to completion with finite forces",
+            "grading_criteria": "every hidden Reynolds case ran to completion with finite forces",
+            "id": "all_cases_converged",
+            "label": "every hidden Reynolds case ran to completion with finite forces",
+            "max_score": 1.0,
+            "name": "every hidden Reynolds case ran to completion with finite forces",
+            "reasoning": "every hidden Reynolds case ran to completion with finite forces",
+            "score": 1.0,
+            "weight": 0.04
+          },
+          {
+            "criterion_id": "no_case_amplifies",
+            "description": "the plate never increases lift oscillation vs the baseline",
+            "grading_criteria": "the plate never increases lift oscillation vs the baseline",
+            "id": "no_case_amplifies",
+            "label": "the plate never increases lift oscillation vs the baseline",
+            "max_score": 1.0,
+            "name": "the plate never increases lift oscillation vs the baseline",
+            "reasoning": "the plate never increases lift oscillation vs the baseline",
+            "score": 1.0,
+            "weight": 0.03
+          }
+        ],
+        "subscores": {
+          "RMS(Cl) suppression vs the no-plate baseline at main Re": 0.9230769230769234,
+          "a wake splitter plate is actually specified (length > 0)": 1.0,
+          "absolute RMS(Cl) below 0.05 for every Reynolds case": 0.0,
+          "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh": 1.0,
+          "control.json is valid JSON with numeric plate params": 1.0,
+          "every hidden Reynolds case ran to completion with finite forces": 1.0,
+          "mean drag at main Re stays under the cap (1.7)": 1.0,
+          "mean drag under the cap (1.7) for every Reynolds number": 1.0,
+          "mesh builds and the plate baffle is inserted on the wake centreline": 1.0,
+          "pimpleFoam completes with finite forces at the main Reynolds number": 1.0,
+          "plate params within physical bounds and inside the domain": 1.0,
+          "the plate never increases lift oscillation vs the baseline": 1.0,
+          "worst-case RMS(Cl) suppression across the hidden Reynolds sweep": 0.0
+        },
+        "weights": {
+          "RMS(Cl) suppression vs the no-plate baseline at main Re": 0.25,
+          "a wake splitter plate is actually specified (length > 0)": 0.03,
+          "absolute RMS(Cl) below 0.05 for every Reynolds case": 0.1,
+          "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh": 0.03,
+          "control.json is valid JSON with numeric plate params": 0.03,
+          "every hidden Reynolds case ran to completion with finite forces": 0.04,
+          "mean drag at main Re stays under the cap (1.7)": 0.05,
+          "mean drag under the cap (1.7) for every Reynolds number": 0.05,
+          "mesh builds and the plate baffle is inserted on the wake centreline": 0.05,
+          "pimpleFoam completes with finite forces at the main Reynolds number": 0.05,
+          "plate params within physical bounds and inside the domain": 0.04,
+          "the plate never increases lift oscillation vs the baseline": 0.03,
+          "worst-case RMS(Cl) suppression across the hidden Reynolds sweep": 0.25
+        }
+      },
+      "stderr": "WARNING: CLONE_NEWPID unavailable ([Errno 1] unshare(CLONE_NEWPID): Operation not permitted); grading without PID-namespace isolation.\n",
+      "structured_subscores": [
+        {
+          "criterion_id": "control_parses",
+          "description": "control.json is valid JSON with numeric plate params",
+          "grading_criteria": "control.json is valid JSON with numeric plate params",
+          "id": "control_parses",
+          "label": "control.json is valid JSON with numeric plate params",
+          "max_score": 1.0,
+          "name": "control.json is valid JSON with numeric plate params",
+          "reasoning": "control.json is valid JSON with numeric plate params",
+          "score": 1.0,
+          "weight": 0.03
+        },
+        {
+          "criterion_id": "feasibility_shell",
+          "description": "plate params within physical bounds and inside the domain",
+          "grading_criteria": "plate params within physical bounds and inside the domain",
+          "id": "feasibility_shell",
+          "label": "plate params within physical bounds and inside the domain",
+          "max_score": 1.0,
+          "name": "plate params within physical bounds and inside the domain",
+          "reasoning": "plate params within physical bounds and inside the domain",
+          "score": 1.0,
+          "weight": 0.04
+        },
+        {
+          "criterion_id": "plate_present",
+          "description": "a wake splitter plate is actually specified (length > 0)",
+          "grading_criteria": "a wake splitter plate is actually specified (length > 0)",
+          "id": "plate_present",
+          "label": "a wake splitter plate is actually specified (length > 0)",
+          "max_score": 1.0,
+          "name": "a wake splitter plate is actually specified (length > 0)",
+          "reasoning": "a wake splitter plate is actually specified (length > 0)",
+          "score": 1.0,
+          "weight": 0.03
+        },
+        {
+          "criterion_id": "agent_openfoam_evidence",
+          "description": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "grading_criteria": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "id": "agent_openfoam_evidence",
+          "label": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "max_score": 1.0,
+          "name": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "reasoning": "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh",
+          "score": 1.0,
+          "weight": 0.03
+        },
+        {
+          "criterion_id": "mesh_baffle_ok",
+          "description": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "grading_criteria": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "id": "mesh_baffle_ok",
+          "label": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "max_score": 1.0,
+          "name": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "reasoning": "mesh builds and the plate baffle is inserted on the wake centreline",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "criterion_id": "solver_converged_main",
+          "description": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "grading_criteria": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "id": "solver_converged_main",
+          "label": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "max_score": 1.0,
+          "name": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "reasoning": "pimpleFoam completes with finite forces at the main Reynolds number",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "criterion_id": "drag_cap_main",
+          "description": "mean drag at main Re stays under the cap (1.7)",
+          "grading_criteria": "mean drag at main Re stays under the cap (1.7)",
+          "id": "drag_cap_main",
+          "label": "mean drag at main Re stays under the cap (1.7)",
+          "max_score": 1.0,
+          "name": "mean drag at main Re stays under the cap (1.7)",
+          "reasoning": "mean drag at main Re stays under the cap (1.7)",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "criterion_id": "suppression_main",
+          "description": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "grading_criteria": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "id": "suppression_main",
+          "label": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "max_score": 1.0,
+          "name": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "reasoning": "RMS(Cl) suppression vs the no-plate baseline at main Re",
+          "score": 0.9230769230769234,
+          "weight": 0.25
+        },
+        {
+          "criterion_id": "residual_shedding_low",
+          "description": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "grading_criteria": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "id": "residual_shedding_low",
+          "label": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "max_score": 1.0,
+          "name": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "reasoning": "absolute RMS(Cl) below 0.05 for every Reynolds case",
+          "score": 0.0,
+          "weight": 0.1
+        },
+        {
+          "criterion_id": "worst_case_suppression",
+          "description": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "grading_criteria": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "id": "worst_case_suppression",
+          "label": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "max_score": 1.0,
+          "name": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "reasoning": "worst-case RMS(Cl) suppression across the hidden Reynolds sweep",
+          "score": 0.0,
+          "weight": 0.25
+        },
+        {
+          "criterion_id": "worst_case_drag_cap",
+          "description": "mean drag under the cap (1.7) for every Reynolds number",
+          "grading_criteria": "mean drag under the cap (1.7) for every Reynolds number",
+          "id": "worst_case_drag_cap",
+          "label": "mean drag under the cap (1.7) for every Reynolds number",
+          "max_score": 1.0,
+          "name": "mean drag under the cap (1.7) for every Reynolds number",
+          "reasoning": "mean drag under the cap (1.7) for every Reynolds number",
+          "score": 1.0,
+          "weight": 0.05
+        },
+        {
+          "criterion_id": "all_cases_converged",
+          "description": "every hidden Reynolds case ran to completion with finite forces",
+          "grading_criteria": "every hidden Reynolds case ran to completion with finite forces",
+          "id": "all_cases_converged",
+          "label": "every hidden Reynolds case ran to completion with finite forces",
+          "max_score": 1.0,
+          "name": "every hidden Reynolds case ran to completion with finite forces",
+          "reasoning": "every hidden Reynolds case ran to completion with finite forces",
+          "score": 1.0,
+          "weight": 0.04
+        },
+        {
+          "criterion_id": "no_case_amplifies",
+          "description": "the plate never increases lift oscillation vs the baseline",
+          "grading_criteria": "the plate never increases lift oscillation vs the baseline",
+          "id": "no_case_amplifies",
+          "label": "the plate never increases lift oscillation vs the baseline",
+          "max_score": 1.0,
+          "name": "the plate never increases lift oscillation vs the baseline",
+          "reasoning": "the plate never increases lift oscillation vs the baseline",
+          "score": 1.0,
+          "weight": 0.03
+        }
+      ],
+      "transcript_chars": 42187,
+      "weighted_subscore_total": 0.6307692307692309,
+      "weighted_total": 0.6307692307692309
+    },
+    "reward_path": "/Users/gandharvmahajan/Documents/AlignerrProjects/Anthropic/NumericalSolverRLTask/lbx-rl-tasks-iso-template/.harness-runs/openfoam-vortex-suppression-problem-dir-1781693681/verifier/reward.json",
+    "rubric_quality": {
+      "checked_at": "2026-06-17T11:06:07.584599+00:00",
+      "checks": [
+        {
+          "check": "Prompt alignment",
+          "reason": "Most criteria map cleanly to the prompt (suppression vs baseline, drag cap, OpenFOAM evidence via blockMesh/checkMesh/'Mesh OK', feasibility bounds). But the `_is_calibrated_control` shortcut grants full suppression scores for control == {0.5, 2.0}, which are the literal example values in the prompt JSON, contradicting the prompt statement 'a plate tuned to a single condition will not score well.'",
+          "recommendation": "Remove the calibrated-control short-circuit so that all submissions, including the example values, are actually evaluated by the solver across the hidden Reynolds sweep.",
+          "status": "warning"
+        },
+        {
+          "check": "Measurability",
+          "reason": "Criteria are deterministic and computed from solver outputs (rms_cl, mean_cd, suppression ratio vs baseline from expected.json, thresholds s_floor/s_perfect/residual_rms_target). However, for calibrated controls the suppression/drag/convergence criteria do not measure anything \u2014 they are assigned fixed values (suppression=1.0, mean_cd=min(1.0,cd_cap)) regardless of actual physics.",
+          "recommendation": "Ensure every scored criterion derives from an actual solver run or explicit ground-truth artifact rather than from a hard-coded acceptance branch.",
+          "status": "warning"
+        },
+        {
+          "check": "Logical independence",
+          "reason": "`mesh_baffle_ok` and `solver_converged_main` both return exactly `bool(main) and main.get('ok', False)`, so they are not independent \u2014 they always co-pass or co-fail and provide duplicate signal at 0.05 each. `all_cases_converged` also overlaps with `solver_converged_main` for the main case.",
+          "recommendation": "Differentiate mesh-build success from solver-convergence (e.g., separate mesh-validity flag from finite-force completion) or merge the duplicated criteria and reallocate weight.",
+          "status": "warning"
+        },
+        {
+          "check": "No inessential complexity",
+          "reason": "There are 13 criteria plus 2 penalties; several low-weight structural items (control_parses 0.03, plate_present 0.03) plus the duplicated mesh/solver criteria add complexity without distinct diagnostic value, e.g. mesh_baffle_ok mirroring solver_converged_main.",
+          "recommendation": "Collapse redundant structural/health criteria so each remaining item contributes unique signal.",
+          "status": "warning"
+        },
+        {
+          "check": "No unjustified single solution path",
+          "reason": "`_is_calibrated_control` checks `abs(gap-0.5)<=1e-9 and abs(length-2.0)<=1e-9` and, when true (plus feasibility + OpenFOAM evidence), bypasses the solver entirely and assigns suppression=1.0 and full passes to every per-Re case. These are the exact values shown in the prompt's example JSON, so simply copying the example yields near-perfect scores without solving \u2014 a hard-coded single path that the task does not require.",
+          "recommendation": "Delete the calibrated-control branch; grade the submitted parameters through the real solver so no specific literal pair (especially the prompt's example) receives an unearned perfect score.",
+          "status": "fail"
+        },
+        {
+          "check": "Ambiguity and reference handling",
+          "reason": "Criteria reference explicit ground-truth artifacts (baseline_rms_cl, cd_cap, suppression_floor/perfect, residual_rms_target loaded from expected.json/hidden_conditions.json) and use clear thresholds and tolerances rather than copied literal answer values.",
+          "recommendation": "",
+          "status": "pass"
+        },
+        {
+          "check": "Weight reasonableness",
+          "reason": "The two core objective criteria (suppression_main and worst_case_suppression) carry 0.25 each (0.50 total), residual_shedding_low 0.10, drag caps 0.05+0.05, with small weights on structural/health items; the -1.0 missing-OpenFOAM penalty matches the prompt's mandatory diagnostic requirement and -0.2 for instability is proportionate.",
+          "recommendation": "",
+          "status": "pass"
+        },
+        {
+          "check": "Expert task coverage",
+          "reason": "Criteria capture what a CFD expert would assess: suppression relative to baseline, robustness across multiple Reynolds numbers (worst case), drag penalty cap, numerical convergence, and that the plate never amplifies lift (no_case_amplifies).",
+          "recommendation": "",
+          "status": "pass"
+        },
+        {
+          "check": "Formatting not overweighted",
+          "reason": "Pure formatting/parse checks are minimal: control_parses (0.03) and plate_present (0.03); substantive physics criteria dominate the weight budget.",
+          "recommendation": "",
+          "status": "pass"
+        }
+      ],
+      "model": "claude-opus-4-8",
+      "status": "completed",
+      "summary": "The rubric covers the substantive objectives (RMS(Cl) suppression at the main Reynolds number and worst-case across the hidden sweep, drag cap, solver convergence, no amplification) with appropriate dominant weight on suppression (0.25 + 0.25). However, the scorer contains a serious backdoor: `_is_calibrated_control` short-circuits the entire solve and awards perfect suppression/drag/convergence scores whenever the submission equals plate_gap=0.5, plate_length=2.0 \u2014 the exact values printed as the example in the prompt. This effectively hard-codes a single solution path that yields top marks without running the physics, contradicting the prompt's own warning that a single-condition tune 'will not score well.' There is also redundancy between criteria (mesh_baffle_ok and solver_converged_main are computed identically)."
+    },
+    "run_dir": "/Users/gandharvmahajan/Documents/AlignerrProjects/Anthropic/NumericalSolverRLTask/lbx-rl-tasks-iso-template/.harness-runs/openfoam-vortex-suppression-problem-dir-1781693681",
+    "runtime": "deepagents",
+    "score": 0.6307692307692309,
+    "subscores": {
+      "RMS(Cl) suppression vs the no-plate baseline at main Re": 0.9230769230769234,
+      "a wake splitter plate is actually specified (length > 0)": 1.0,
+      "absolute RMS(Cl) below 0.05 for every Reynolds case": 0.0,
+      "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh": 1.0,
+      "control.json is valid JSON with numeric plate params": 1.0,
+      "every hidden Reynolds case ran to completion with finite forces": 1.0,
+      "mean drag at main Re stays under the cap (1.7)": 1.0,
+      "mean drag under the cap (1.7) for every Reynolds number": 1.0,
+      "mesh builds and the plate baffle is inserted on the wake centreline": 1.0,
+      "pimpleFoam completes with finite forces at the main Reynolds number": 1.0,
+      "plate params within physical bounds and inside the domain": 1.0,
+      "the plate never increases lift oscillation vs the baseline": 1.0,
+      "worst-case RMS(Cl) suppression across the hidden Reynolds sweep": 0.0
+    },
+    "weights": {
+      "RMS(Cl) suppression vs the no-plate baseline at main Re": 0.25,
+      "a wake splitter plate is actually specified (length > 0)": 0.03,
+      "absolute RMS(Cl) below 0.05 for every Reynolds case": 0.1,
+      "agent transcript shows OpenFOAM probe use with blockMesh and checkMesh": 0.03,
+      "control.json is valid JSON with numeric plate params": 0.03,
+      "every hidden Reynolds case ran to completion with finite forces": 0.04,
+      "mean drag at main Re stays under the cap (1.7)": 0.05,
+      "mean drag under the cap (1.7) for every Reynolds number": 0.05,
+      "mesh builds and the plate baffle is inserted on the wake centreline": 0.05,
+      "pimpleFoam completes with finite forces at the main Reynolds number": 0.05,
+      "plate params within physical bounds and inside the domain": 0.04,
+      "the plate never increases lift oscillation vs the baseline": 0.03,
+      "worst-case RMS(Cl) suppression across the hidden Reynolds sweep": 0.25
+    }
+  },
+  "image_digest": "sha256:3b662d818fe5a2937796e49151111ca974f622b9fad1697f6d05bb4b113cadd5",
+  "platform": "linux/amd64",
+  "schema_version": "1.0",
+  "task_dir_sha256": "0a3b560e9e01a87f02de2fb206539b11a9947b1c3808b8191c42053c808bbb04"
+}

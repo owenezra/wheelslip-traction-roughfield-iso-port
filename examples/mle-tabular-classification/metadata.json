@@ -1,0 +1,7 @@
+{
+  "benchmark": "taiga_task",
+  "problem_data": {
+    "instance_id": "mle-tabular-classification",
+    "description": "Synthetic tabular regression plus classification task using continuous ML_Envs-style scoring"
+  }
+}

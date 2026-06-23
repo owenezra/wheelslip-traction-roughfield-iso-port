@@ -1,0 +1,12 @@
+{
+  "_comment": "Hidden anchors. baseline_rms_cl is the precomputed no-plate RMS(Cl) per Reynolds number (same fixed mesh / dt / endTime / window as grading). Filled from base-image precompute; do not regenerate nondeterministically.",
+  "baseline_rms_cl": {
+    "100": 0.25259,
+    "130": 0.33774,
+    "80": 0.18098
+  },
+  "cd_cap": 1.7,
+  "suppression_floor": 0.30,
+  "suppression_perfect": 0.95,
+  "residual_rms_target": 0.05
+}

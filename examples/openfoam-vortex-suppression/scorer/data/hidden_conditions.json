@@ -1,0 +1,7 @@
+{
+  "reynolds": [100, 130, 80],
+  "end_time": 120.0,
+  "delta_t": 0.01,
+  "window_frac": 0.4,
+  "per_case_timeout": 300
+}

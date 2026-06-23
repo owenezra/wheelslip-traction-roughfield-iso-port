@@ -1,0 +1,42 @@
+schema_version = "1.1"
+
+[task]
+name = "labelbox/openfoam-vortex-suppression"
+description = "Design a wake splitter plate that passively suppresses von Karman vortex shedding behind a 2D cylinder (OpenFOAM, deterministic RANS/laminar)."
+
+[environment]
+required_resources = "4vcpu+16gib"
+storage_mb = 10000
+allow_internet = true
+
+[agent]
+timeout_sec = 1800
+
+[runner.timeouts]
+setup_sec = 1800
+grading_sec = 1200
+tool_sec = 600
+max_episode_sec = 1800
+
+[verifier]
+# CFD grading runs the solver for each hidden Reynolds case sequentially
+# (3 cases x per_case_timeout=300s in scorer/data/hidden_conditions.json), so
+# the verifier wall must exceed that worst case. Typical grade ~5 min; cap 20.
+timeout_sec = 1200
+env = []
+
+[difficulty]
+task_type = "cfd"
+domain = "vortex_suppression"
+reward_type = "multi_deterministic_rubrics"
+[ground_truth]
+in_container = true
+render_command = "bash solution/render.sh"
+render_outputs = [
+  { path = "/tmp/output/rendering.mp4", required = true, description = "Animated vorticity wake of the oracle (suppressed) case" },
+]
+
+[[outputs]]
+path = "/tmp/output/control.json"
+required = true
+description = "Splitter-plate design: plate_gap and plate_length in cylinder diameters"
