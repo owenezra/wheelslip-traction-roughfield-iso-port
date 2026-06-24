@@ -7,6 +7,7 @@
 - Declared `/tmp/output/policy.py` under `[[outputs]]`.
 - Moved the public simulator to `data/env/practice_env.py` and the held-out evaluator to `scorer/data/wheelslip_eval_protocol.py`.
 - Added committed policy baselines in per-baseline subdirectories.
+- Marked ground truth as in-container so the oracle solve and grader use the task image's MuJoCo/scikit-learn stack and root-only private fixtures.
 
 ## TPU/CPU split
 

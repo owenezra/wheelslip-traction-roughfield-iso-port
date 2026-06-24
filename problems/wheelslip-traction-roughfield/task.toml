@@ -19,6 +19,7 @@ env = []
 [ground_truth]
 continuous_score_epsilon = 0.05
 max_trivial_score = 0.10
+in_container = true
 
 [difficulty]
 task_type = "ml"
@@ -30,4 +31,4 @@ license_source = "All observations and evaluation trajectories are generated det
 [[outputs]]
 path = "/tmp/output/policy.py"
 required = true
-description = "Self-contained Python module defining load_policy() and act(observation) for a 14-knot blind torque program."
+description = "Python module defining load_policy() and act(observation) for a 14-knot blind torque program; it may use sibling artifacts in /tmp/output."

@@ -1,0 +1,98 @@
+{
+  "alignerr_cli_version": "0.1.0",
+  "base_image_ref": "lbx-tasks-base-tpu:runtime-ml-core-py313-local",
+  "built_at": "2026-06-24T00:01:36.143717+00:00",
+  "duration_seconds": 0.30861491698306054,
+  "ground_truth_result": {
+    "details_path": "/Users/owen/Documents/Codex/2026-06-23/i-wan/work/bx-rl-tasks-iso/.harness-runs/wheelslip-traction-roughfield-problem-dir-1782259294/verifier/reward-details.json",
+    "graded_at": "2026-06-24T00:24:03.641907+00:00",
+    "metadata": {
+      "headline_score": 0.4999999999869036,
+      "mean_quality": 0.6874068016819949,
+      "n_eval": 80,
+      "pre_grade_cleanup": {
+        "killed_processes": 0,
+        "removed_nonregular": 0,
+        "removed_symlinks": 0
+      },
+      "reported_final_score": 0.4999999999869036,
+      "return_shape": "rubric_grade",
+      "rubric_breakdown": [
+        {
+          "actual": null,
+          "criterion": "mean_quality_progress",
+          "criterion_id": "mean_quality_progress",
+          "description": "mean_quality_progress",
+          "expected": null,
+          "grading_type": "unknown",
+          "id": "mean_quality_progress",
+          "label": "mean_quality_progress",
+          "passed": true,
+          "reasoning": "",
+          "score": 0.6874068016819949,
+          "weight": 1.0
+        }
+      ],
+      "rubric_weights": {
+        "mean_quality_progress": 1.0
+      },
+      "scoring_mode": "weighted",
+      "serialized_grade": {
+        "penalties": null,
+        "score": 0.4999999999869036,
+        "scoring_mode": "weighted",
+        "structured_subscores": [
+          {
+            "criterion_id": "mean_quality_progress",
+            "description": "mean_quality_progress",
+            "grading_criteria": "mean_quality_progress",
+            "id": "mean_quality_progress",
+            "label": "mean_quality_progress",
+            "max_score": 1.0,
+            "name": "mean_quality_progress",
+            "reasoning": "",
+            "score": 0.6874068016819949,
+            "weight": 1.0
+          }
+        ],
+        "subscores": {
+          "mean_quality_progress": 0.6874068016819949
+        },
+        "weights": {
+          "mean_quality_progress": 1.0
+        }
+      },
+      "settled_rate": 0.85,
+      "weighted_subscore_total": 0.6874068016819949,
+      "weighted_total": 0.6874068016819949
+    },
+    "reward_path": "/Users/owen/Documents/Codex/2026-06-23/i-wan/work/bx-rl-tasks-iso/.harness-runs/wheelslip-traction-roughfield-problem-dir-1782259294/verifier/reward.json",
+    "run_dir": "/Users/owen/Documents/Codex/2026-06-23/i-wan/work/bx-rl-tasks-iso/.harness-runs/wheelslip-traction-roughfield-problem-dir-1782259294",
+    "runtime": "solution",
+    "score": 0.4999999999869036,
+    "structured_subscores": [
+      {
+        "criterion_id": "mean_quality_progress",
+        "description": "mean_quality_progress",
+        "grading_criteria": "mean_quality_progress",
+        "id": "mean_quality_progress",
+        "label": "mean_quality_progress",
+        "max_score": 1.0,
+        "name": "mean_quality_progress",
+        "reasoning": "",
+        "score": 0.6874068016819949,
+        "weight": 1.0
+      }
+    ],
+    "subscores": {
+      "mean_quality_progress": 0.6874068016819949
+    },
+    "weights": {
+      "mean_quality_progress": 1.0
+    }
+  },
+  "image_digest": "sha256:f498c2f4c8720775e177b12c1084001c011af84ad98329921a2441b6be30436e",
+  "platform": "linux/amd64",
+  "schema_version": "1.0",
+  "task_dir_sha256": "fdb9824a7105cc5fc3b7a7dcb405798597d621f31a776dbe72c5829105fa410f"
+}
